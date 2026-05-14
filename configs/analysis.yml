@@ -21,9 +21,19 @@ subsetting:
 loci_identiffication:
   lead_p_threshold: 5e-8
   merge_distance_kb: 250
+  use_ld: true
+  auto_merge_gap_kb: 100
+  ld_test_gap_min_kb: 150
+  ld_test_gap_max_kb: 250
   min_snps_per_locus: 1
   require_refpanel_match: true
   chromosomes: autosomes
+  min_locus_width_kbp: 1
+  ld_threshold: 0.2
+  n_boundary_snps: 10
+
+gene_annotation:
+  gencode_gtf: /s/nath-lab/alsamman/____MyCodes____/resources/NCBI37.3.gene.loc
 
 ref_panels:
   EAS: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.EAS

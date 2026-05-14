@@ -16,5 +16,11 @@
 # Step 5: Identify loci per chromosome and merge per table
 ./submit.sh --snakefile rules/05_identify_loci.smk --jobs 40 --cores 8
 
-# Step 6: Build merged FUMA loci and Excel min-p summary
+# Step 6: Merge all tables into one loci table per dataset
+./submit.sh --snakefile rules/06_merge_dataset_loci.smk --jobs 10 --cores 4
+
+# Step 7: Summarize loci by chromosome (22 parallel jobs) then combine
+./submit.sh --snakefile rules/07_loci_dataset_summary.smk --jobs 22 --cores 8
+
+# Step 8: Build merged FUMA loci and Excel min-p summary
 ./submit.sh --snakefile rules/02_fuma_loci_summary.smk --jobs 1 --cores 2

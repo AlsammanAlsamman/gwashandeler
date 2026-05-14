@@ -7,6 +7,9 @@
 # Step 2: Plot GWAS Manhattan plots for all tables
 ./submit.sh --snakefile rules/01_plot_gwas_manhattan.smk --jobs 20 --cores 8
 
+# Step 2b: Plot region Manhattan plots from the original extracted tables
+./submit.sh --snakefile rules/01_plot_regions_manhattan.smk --jobs 40 --cores 8
+
 # Step 3: Subset GWAS by p-value threshold
 ./submit.sh --snakefile rules/03_subset_gwas.smk --jobs 10 --cores 8
 

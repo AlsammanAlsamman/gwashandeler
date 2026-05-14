@@ -96,6 +96,10 @@ def parse_args():
         "--skip-xlsx", action="store_true",
         help="Skip writing Excel output (useful for per-chromosome parallel jobs)."
     )
+    parser.add_argument(
+        "--details-tsv", required=False,
+        help="Optional TSV with detailed merge decisions and source-locus tracking."
+    )
     return parser.parse_args()
 
 
@@ -440,6 +444,7 @@ def merge_intervals_by_policy(intervals_df, auto_merge_gap_bp, ld_test_min_gap_b
       4) otherwise => do not merge
     """
     records = []
+    decisions = []
 
     for chr_value, sub in intervals_df.groupby("chromosome", sort=False):
         sub = sub.sort_values(["start", "end"]).reset_index(drop=True)
@@ -453,13 +458,19 @@ def merge_intervals_by_policy(intervals_df, auto_merge_gap_bp, ld_test_min_gap_b
 
             should_merge = False
             reason = ""
+            cause = ""
+            ld_val = None
+            left_boundary_n = 0
+            right_boundary_n = 0
 
             if gap <= 0:
                 should_merge = True
                 reason = "overlap"
+                cause = "overlap_or_touch"
             elif gap <= auto_merge_gap_bp:
                 should_merge = True
                 reason = f"gap<=auto({auto_merge_gap_bp})"
+                cause = "distance_auto_merge"
             elif ld_test_min_gap_bp <= gap <= ld_test_max_gap_bp and loci_snps and ref_panel_prefix:
                 left_snps = collect_boundary_snps(
                     loci_snps, chr_value, cur_start, cur_end, n_snps=n_boundary_snps, at_end=True
@@ -467,18 +478,48 @@ def merge_intervals_by_policy(intervals_df, auto_merge_gap_bp, ld_test_min_gap_b
                 right_snps = collect_boundary_snps(
                     loci_snps, chr_value, s, e, n_snps=n_boundary_snps, at_end=False
                 )
+                left_boundary_n = len(left_snps)
+                right_boundary_n = len(right_snps)
                 ld_val = compute_ld_with_plink(left_snps, right_snps, ref_panel_prefix)
 
                 if ld_val is not None and ld_val >= ld_merge_threshold:
                     should_merge = True
                     reason = f"LD={ld_val:.4f}>=thr({ld_merge_threshold})"
+                    cause = "ld_pass"
                 else:
                     reason = f"LD={(ld_val if ld_val is not None else 'NA')}<thr({ld_merge_threshold})"
+                    cause = "ld_fail_or_missing"
 
                 print(
                     f"  LD check chr{chr_value}: [{cur_start}-{cur_end}] vs [{s}-{e}], gap={gap}, {reason}",
                     flush=True,
                 )
+            elif ld_test_min_gap_bp <= gap <= ld_test_max_gap_bp and (not loci_snps or not ref_panel_prefix):
+                cause = "ld_window_but_ld_unavailable"
+            else:
+                cause = "distance_exceeds_policy"
+
+            decisions.append(
+                {
+                    "record_type": "merge_decision",
+                    "chr": chr_value,
+                    "left_start": int(cur_start),
+                    "left_end": int(cur_end),
+                    "right_start": int(s),
+                    "right_end": int(e),
+                    "gap_bp": int(gap),
+                    "decision": "merged" if should_merge else "not_merged",
+                    "cause": cause,
+                    "reason": reason,
+                    "ld_r2": ld_val,
+                    "ld_threshold": float(ld_merge_threshold),
+                    "left_boundary_snps": int(left_boundary_n),
+                    "right_boundary_snps": int(right_boundary_n),
+                    "auto_merge_gap_bp": int(auto_merge_gap_bp),
+                    "ld_test_min_gap_bp": int(ld_test_min_gap_bp),
+                    "ld_test_max_gap_bp": int(ld_test_max_gap_bp),
+                }
+            )
 
             if should_merge:
                 cur_end = max(cur_end, e)
@@ -501,7 +542,80 @@ def merge_intervals_by_policy(intervals_df, auto_merge_gap_bp, ld_test_min_gap_b
             next_idx = idxs[pos + 1]
             merged.at[row_idx, "IMD"] = int(merged.at[next_idx, "start"] - merged.at[row_idx, "end"] - 1)
     merged = merged.drop(columns=["chr_order"])
-    return merged[["locus_code", "chr", "start", "end", "length_bp", "length_kbp", "IMD"]]
+    decisions_df = pd.DataFrame(decisions)
+    return merged[["locus_code", "chr", "start", "end", "length_bp", "length_kbp", "IMD"]], decisions_df
+
+
+def build_details_summary(decisions_df, all_loci_df, assigned_initial, assigned_final, merged_df):
+    """
+    Build long-form details table to audit each locus transition and merge decision.
+    """
+    parts = []
+
+    if decisions_df is not None and not decisions_df.empty:
+        parts.append(decisions_df.copy())
+
+    src = all_loci_df.copy()
+    src["assigned_initial"] = assigned_initial
+    src["assigned_final"] = assigned_final
+    src["assignment_status"] = np.where(
+        src["assigned_initial"].notna(),
+        "assigned_direct",
+        np.where(src["assigned_final"].notna(), "assigned_via_fallback", "unassigned"),
+    )
+
+    src_details = pd.DataFrame(
+        {
+            "record_type": "source_assignment",
+            "chr": src["chromosome"],
+            "source_start": src["start"],
+            "source_end": src["end"],
+            "dataset": src.get("dataset", pd.Series(index=src.index, dtype=str)),
+            "table": src.get("table", pd.Series(index=src.index, dtype=str)),
+            "dataset_locus": src.get("dataset_locus", pd.Series(index=src.index, dtype=str)),
+            "top_p": src.get("top_p", pd.Series(index=src.index, dtype=float)),
+            "assigned_initial": src["assigned_initial"],
+            "assigned_final": src["assigned_final"],
+            "assignment_status": src["assignment_status"],
+        }
+    )
+    parts.append(src_details)
+
+    final_details = pd.DataFrame(
+        {
+            "record_type": "final_locus",
+            "locus_code": merged_df.get("locus_code", pd.Series(dtype=str)),
+            "chr": merged_df.get("chr", pd.Series(dtype=str)),
+            "start": merged_df.get("start", pd.Series(dtype=float)),
+            "end": merged_df.get("end", pd.Series(dtype=float)),
+            "length_bp": merged_df.get("length_bp", pd.Series(dtype=float)),
+            "nearest_gene": merged_df.get("nearest_gene", pd.Series(dtype=str)),
+            "gene_distance_bp": merged_df.get("gene_distance_bp", pd.Series(dtype=float)),
+        }
+    )
+    parts.append(final_details)
+
+    if not parts:
+        return pd.DataFrame()
+
+    details = pd.concat(parts, ignore_index=True, sort=False)
+    if "chr" in details.columns:
+        details["_chr_order"] = details["chr"].map(lambda x: chr_sort_key(x)[0] if pd.notna(x) else 999)
+        for col in ("start", "left_start", "source_start"):
+            if col in details.columns:
+                details[f"_{col}_num"] = pd.to_numeric(details[col], errors="coerce")
+                break
+        sort_cols = ["_chr_order"]
+        for c in ("_start_num", "_left_start_num", "_source_start_num"):
+            if c in details.columns:
+                sort_cols.append(c)
+                break
+        details = details.sort_values(sort_cols, na_position="last").reset_index(drop=True)
+        drop_cols = [c for c in details.columns if c.startswith("_")]
+        if drop_cols:
+            details = details.drop(columns=drop_cols)
+
+    return details
 
 
 # ---------------------------------------------------------------------------
@@ -532,6 +646,91 @@ def assign_loci(all_loci_df, merged_df):
                 break
         codes.append(code)
     return codes
+
+
+def append_unassigned_as_fallback_loci(merged_df, all_loci_df, assigned_codes):
+    """
+    Materialize unassigned source loci as standalone fallback loci.
+    This prevents loci from disappearing when assignment fails unexpectedly.
+
+    Returns (merged_out, assigned_out, n_added).
+    """
+    if len(assigned_codes) != len(all_loci_df):
+        return merged_df, assigned_codes, 0
+
+    missing_idx = [i for i, code in enumerate(assigned_codes) if code is None]
+    if not missing_idx:
+        return merged_df, assigned_codes, 0
+
+    # Keep only truly missing coordinates:
+    # 1) deduplicate unassigned source intervals
+    # 2) do not re-add intervals already present in merged_df
+    existing_coords = set()
+    for _, r in merged_df.iterrows():
+        existing_coords.add((norm_chr(r["chr"]), int(r["start"]), int(r["end"])))
+
+    candidate_coords = []
+    seen_candidates = set()
+    for i in missing_idx:
+        row = all_loci_df.iloc[i]
+        coord = (norm_chr(row["chromosome"]), int(row["start"]), int(row["end"]))
+        if coord in existing_coords:
+            continue
+        if coord in seen_candidates:
+            continue
+        seen_candidates.add(coord)
+        candidate_coords.append(coord)
+
+    extra_rows = []
+    for c, s, e in candidate_coords:
+        length_bp = int(e - s + 1)
+        extra_rows.append(
+            {
+                "locus_code": None,
+                "chr": c,
+                "start": s,
+                "end": e,
+                "length_bp": length_bp,
+                "length_kbp": length_bp / 1000.0,
+                "IMD": np.nan,
+            }
+        )
+
+    if extra_rows:
+        merged_out = pd.concat([merged_df, pd.DataFrame(extra_rows)], ignore_index=True)
+    else:
+        merged_out = merged_df.copy()
+
+    merged_out["_chr_order"] = merged_out["chr"].map(lambda x: chr_sort_key(x)[0])
+    merged_out = merged_out.sort_values(["_chr_order", "start", "end"]).reset_index(drop=True)
+    merged_out = merged_out.drop(columns=["_chr_order"])
+
+    merged_out["locus_code"] = [f"Locus_{i:04d}" for i in range(1, len(merged_out) + 1)]
+
+    assigned_out = list(assigned_codes)
+    for i in missing_idx:
+        row = all_loci_df.iloc[i]
+        c = norm_chr(row["chromosome"])
+        s = int(row["start"])
+        e = int(row["end"])
+        hit = merged_out[
+            (merged_out["chr"] == c)
+            & (merged_out["start"] == s)
+            & (merged_out["end"] == e)
+        ]
+        if not hit.empty:
+            assigned_out[i] = hit.iloc[0]["locus_code"]
+
+    merged_out["IMD"] = np.nan
+    for chr_value, sub in merged_out.groupby("chr", sort=False):
+        idxs = list(sub.index)
+        for pos, row_idx in enumerate(idxs[:-1]):
+            next_idx = idxs[pos + 1]
+            merged_out.at[row_idx, "IMD"] = int(
+                merged_out.at[next_idx, "start"] - merged_out.at[row_idx, "end"] - 1
+            )
+
+    return merged_out, assigned_out, len(extra_rows)
 
 
 # ---------------------------------------------------------------------------
@@ -736,6 +935,11 @@ def main():
         summary.to_csv(args.output_tsv, sep="\t", index=False)
         print(f"TSV written:  {args.output_tsv}", flush=True)
 
+        if args.details_tsv:
+            Path(os.path.dirname(args.details_tsv)).mkdir(parents=True, exist_ok=True)
+            pd.DataFrame().to_csv(args.details_tsv, sep="\t", index=False)
+            print(f"Details TSV written: {args.details_tsv}", flush=True)
+
         if not args.skip_xlsx:
             write_excel_with_highlight(summary, args.output_xlsx, highlight_cols, threshold=5e-8)
             print(f"XLSX written: {args.output_xlsx}", flush=True)
@@ -762,7 +966,7 @@ def main():
     else:
         ref_panel_prefix = None
 
-    merged_initial = merge_intervals_by_policy(
+    merged_initial, decisions_df = merge_intervals_by_policy(
         all_loci[["chromosome", "start", "end"]].copy(),
         auto_merge_gap_bp=auto_merge_gap_bp,
         ld_test_min_gap_bp=ld_test_min_gap_bp,
@@ -790,10 +994,20 @@ def main():
 
     # 3. Assign each source locus to a merged locus
     assigned = assign_loci(all_loci, merged)
+    assigned_initial = list(assigned)
     n_unassigned = sum(c is None for c in assigned)
     if n_unassigned:
         print(f"  [warn] {n_unassigned} source loci could not be assigned "
               "to a merged locus", file=sys.stderr)
+
+    merged, assigned, n_fallback_added = append_unassigned_as_fallback_loci(
+        merged, all_loci, assigned
+    )
+    if n_fallback_added:
+        print(
+            f"  Added {n_fallback_added} fallback loci to preserve unassigned source intervals",
+            flush=True,
+        )
 
     # 4. Annotate with nearest gene
     print("Annotating with nearest gene ...", flush=True)
@@ -817,6 +1031,18 @@ def main():
     # 5. Build per-dataset x table summary columns
     print("Building per-dataset x table summary ...", flush=True)
     summary, highlight_cols = build_summary(merged, all_loci, assigned, gwastables)
+
+    if args.details_tsv:
+        details_df = build_details_summary(
+            decisions_df=decisions_df,
+            all_loci_df=all_loci,
+            assigned_initial=assigned_initial,
+            assigned_final=assigned,
+            merged_df=merged,
+        )
+        Path(os.path.dirname(args.details_tsv)).mkdir(parents=True, exist_ok=True)
+        details_df.to_csv(args.details_tsv, sep="\t", index=False)
+        print(f"Details TSV written: {args.details_tsv}", flush=True)
 
     # 6. Write outputs
     Path(os.path.dirname(args.output_tsv)).mkdir(parents=True, exist_ok=True)

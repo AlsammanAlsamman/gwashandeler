@@ -88,6 +88,9 @@ def main():
         out = out.sort_values(["_chr_order", "_start_num"], na_position="last").reset_index(drop=True)
         out = out.drop(columns=["_chr_order", "_start_num"])
 
+    if not out.empty and "locus_code" in out.columns:
+        out["locus_code"] = [f"Locus_{i:04d}" for i in range(1, len(out) + 1)]
+
     highlight_cols = [c for c in out.columns if str(c).endswith("__top_p")]
 
     Path(os.path.dirname(args.output_tsv)).mkdir(parents=True, exist_ok=True)

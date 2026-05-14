@@ -13,6 +13,8 @@ default_resources:
 extraction:
   delimiter: "\t"
 
+regions: input/regions.tsv
+
 # GWAS subsetting defaults
 subsetting:
   pvalue_threshold: 5e-3

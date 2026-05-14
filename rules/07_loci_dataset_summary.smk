@@ -44,10 +44,15 @@ def get_chr_summary_done_targets():
     return [f"{results_dir}/loci_summary/by_chr/chr{c}.done" for c in get_chromosomes()]
 
 
+def get_chr_details_tsv_targets():
+    return [f"{results_dir}/loci_summary/by_chr/chr{c}.details.tsv" for c in get_chromosomes()]
+
+
 rule all:
     input:
         f"{results_dir}/loci_summary/dataset_loci_gene_summary.tsv",
         f"{results_dir}/loci_summary/dataset_loci_gene_summary.xlsx",
+        f"{results_dir}/loci_summary/dataset_loci_gene_summary.details.tsv",
         f"{results_dir}/loci_summary/dataset_loci_gene_summary.done"
 
 
@@ -57,6 +62,7 @@ rule summarize_dataset_loci_with_genes_by_chr:
         dataset_loci=get_dataset_loci_tsv_inputs()
     output:
         tsv=f"{results_dir}/loci_summary/by_chr/chr{{chromosome}}.summary.tsv",
+        details=f"{results_dir}/loci_summary/by_chr/chr{{chromosome}}.details.tsv",
         done=f"{results_dir}/loci_summary/by_chr/chr{{chromosome}}.done"
     params:
         config="configs/analysis.yml",
@@ -64,7 +70,7 @@ rule summarize_dataset_loci_with_genes_by_chr:
         use_ld=get_use_ld(),
         chromosome="{chromosome}"
     wildcard_constraints:
-        chromosome="\d+"
+        chromosome=r"\d+"
     resources:
         mem_mb=16000,
         cores=2,
@@ -83,6 +89,7 @@ rule summarize_dataset_loci_with_genes_by_chr:
             --inputs {input.dataset_loci} \
             --chromosome {params.chromosome} \
             --output-tsv {output.tsv} \
+            --details-tsv {output.details} \
             --distance {params.distance} \
             --skip-xlsx \
             $LD_FLAG \
@@ -94,10 +101,12 @@ rule summarize_dataset_loci_with_genes_by_chr:
 rule summarize_dataset_loci_with_genes:
     input:
         chr_tsv=get_chr_summary_tsv_targets(),
+        chr_details=get_chr_details_tsv_targets(),
         chr_done=get_chr_summary_done_targets()
     output:
         tsv=f"{results_dir}/loci_summary/dataset_loci_gene_summary.tsv",
         xlsx=f"{results_dir}/loci_summary/dataset_loci_gene_summary.xlsx",
+        details=f"{results_dir}/loci_summary/dataset_loci_gene_summary.details.tsv",
         done=f"{results_dir}/loci_summary/dataset_loci_gene_summary.done"
     resources:
         mem_mb=32000,
@@ -113,5 +122,9 @@ rule summarize_dataset_loci_with_genes:
             --output-tsv {output.tsv} \
             --output-xlsx {output.xlsx} \
             2>&1 | tee {log}
+        python3 scripts/combine_loci_details_by_chr.py \
+            --inputs {input.chr_details} \
+            --output-tsv {output.details} \
+            2>&1 | tee -a {log}
         touch {output.done}
         """

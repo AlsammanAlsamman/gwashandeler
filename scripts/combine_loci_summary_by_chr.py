@@ -91,7 +91,10 @@ def main():
     if not out.empty and "locus_code" in out.columns:
         out["locus_code"] = [f"Locus_{i:04d}" for i in range(1, len(out) + 1)]
 
-    highlight_cols = [c for c in out.columns if str(c).endswith("__top_p")]
+    highlight_cols = [
+        c for c in out.columns
+        if str(c).endswith("__top_p") or str(c).endswith("__top_snp_p")
+    ]
 
     Path(os.path.dirname(args.output_tsv)).mkdir(parents=True, exist_ok=True)
     out.to_csv(args.output_tsv, sep="\t", index=False)

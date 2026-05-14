@@ -201,9 +201,9 @@ if (nrow(plot_data) == 0) {
     p <- ggplot(plot_data, aes(x = POS, y = log10p, color = ZSCORE)) +
         geom_point(aes(size = log10p), alpha = 0.7) +
         scale_color_gradient2(
-            low = "#d73027",
-            mid = "#f7f7f7",
-            high = "#4575b4",
+            low = "#4575b4",
+            mid = "#fee08b",
+            high = "#d73027",
             midpoint = 0,
             name = "Z-score"
         ) +

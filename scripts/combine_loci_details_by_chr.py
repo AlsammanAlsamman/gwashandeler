@@ -51,6 +51,12 @@ def main():
     if not out.empty and "chr" in out.columns:
         out["_chr_order"] = out["chr"].map(lambda x: chr_sort_key(x)[0] if pd.notna(x) else 999)
 
+        # Explicit record_type order for audit readability:
+        #   merge_decision (1) → source_assignment (2) → final_locus (3)
+        record_order = {"merge_decision": 1, "source_assignment": 2, "final_locus": 3}
+        if "record_type" in out.columns:
+            out["_record_order"] = out["record_type"].map(lambda x: record_order.get(str(x), 9))
+
         numeric_sort_col = None
         for c in ["start", "left_start", "source_start"]:
             if c in out.columns:
@@ -59,14 +65,14 @@ def main():
                 break
 
         sort_cols = ["_chr_order"]
-        if "record_type" in out.columns:
-            sort_cols.append("record_type")
         if numeric_sort_col:
             sort_cols.append(numeric_sort_col)
+        if "_record_order" in out.columns:
+            sort_cols.append("_record_order")
 
         out = out.sort_values(sort_cols, na_position="last").reset_index(drop=True)
 
-        drop_cols = [c for c in ["_chr_order", "_start_num"] if c in out.columns]
+        drop_cols = [c for c in ["_chr_order", "_start_num", "_record_order"] if c in out.columns]
         if drop_cols:
             out = out.drop(columns=drop_cols)
 

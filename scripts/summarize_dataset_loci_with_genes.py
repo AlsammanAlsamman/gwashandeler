@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 summarize_dataset_loci_with_genes.py
 
@@ -601,6 +601,12 @@ def build_details_summary(decisions_df, all_loci_df, assigned_initial, assigned_
     details = pd.concat(parts, ignore_index=True, sort=False)
     if "chr" in details.columns:
         details["_chr_order"] = details["chr"].map(lambda x: chr_sort_key(x)[0] if pd.notna(x) else 999)
+
+        # Explicit record_type order: merge_decision(1) -> source_assignment(2) -> final_locus(3)
+        record_order = {"merge_decision": 1, "source_assignment": 2, "final_locus": 3}
+        if "record_type" in details.columns:
+            details["_record_order"] = details["record_type"].map(lambda x: record_order.get(str(x), 9))
+
         for col in ("start", "left_start", "source_start"):
             if col in details.columns:
                 details[f"_{col}_num"] = pd.to_numeric(details[col], errors="coerce")
@@ -610,6 +616,8 @@ def build_details_summary(decisions_df, all_loci_df, assigned_initial, assigned_
             if c in details.columns:
                 sort_cols.append(c)
                 break
+        if "_record_order" in details.columns:
+            sort_cols.append("_record_order")
         details = details.sort_values(sort_cols, na_position="last").reset_index(drop=True)
         drop_cols = [c for c in details.columns if c.startswith("_")]
         if drop_cols:
@@ -664,17 +672,25 @@ def append_unassigned_as_fallback_loci(merged_df, all_loci_df, assigned_codes):
 
     # Keep only truly missing coordinates:
     # 1) deduplicate unassigned source intervals
-    # 2) do not re-add intervals already present in merged_df
-    existing_coords = set()
+    # 2) do not re-add intervals that OVERLAP any existing merged locus
+    #    (overlap, not just exact match — prevents creating fallback loci inside existing loci)
+    existing_by_chr = {}
     for _, r in merged_df.iterrows():
-        existing_coords.add((norm_chr(r["chr"]), int(r["start"]), int(r["end"])))
+        c = norm_chr(r["chr"])
+        existing_by_chr.setdefault(c, []).append((int(r["start"]), int(r["end"])))
+
+    def overlaps_existing(c, s, e):
+        for ms, me in existing_by_chr.get(c, []):
+            if s <= me and e >= ms:
+                return True
+        return False
 
     candidate_coords = []
     seen_candidates = set()
     for i in missing_idx:
         row = all_loci_df.iloc[i]
         coord = (norm_chr(row["chromosome"]), int(row["start"]), int(row["end"]))
-        if coord in existing_coords:
+        if overlaps_existing(*coord):
             continue
         if coord in seen_candidates:
             continue
@@ -707,19 +723,19 @@ def append_unassigned_as_fallback_loci(merged_df, all_loci_df, assigned_codes):
 
     merged_out["locus_code"] = [f"Locus_{i:04d}" for i in range(1, len(merged_out) + 1)]
 
+    # Re-assign the previously-unassigned source loci now that fallback loci exist.
+    # Use overlap logic (same as assign_loci) so a source point that sits INSIDE
+    # an existing merged locus gets the right code instead of a new fallback.
     assigned_out = list(assigned_codes)
     for i in missing_idx:
         row = all_loci_df.iloc[i]
         c = norm_chr(row["chromosome"])
         s = int(row["start"])
         e = int(row["end"])
-        hit = merged_out[
-            (merged_out["chr"] == c)
-            & (merged_out["start"] == s)
-            & (merged_out["end"] == e)
-        ]
-        if not hit.empty:
-            assigned_out[i] = hit.iloc[0]["locus_code"]
+        for _, mr in merged_out.iterrows():
+            if norm_chr(mr["chr"]) == c and s <= int(mr["end"]) and e >= int(mr["start"]):
+                assigned_out[i] = mr["locus_code"]
+                break
 
     merged_out["IMD"] = np.nan
     for chr_value, sub in merged_out.groupby("chr", sort=False):
@@ -891,7 +907,7 @@ def main():
 
     gwastables = cfg.get("gwastables", [])
     gene_loc_path = cfg.get("gene_annotation", {}).get("gencode_gtf", "")
-    locus_cfg = cfg.get("loci_identiffication", {})
+    locus_cfg = cfg.get("loci_identification", cfg.get("loci_identiffication", {}))
     if "min_locus_width_kbp" in locus_cfg:
         min_locus_width_bp = int(round(float(locus_cfg["min_locus_width_kbp"]) * 1000))
     else:

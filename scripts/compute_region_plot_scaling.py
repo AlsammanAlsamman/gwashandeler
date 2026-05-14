@@ -8,7 +8,6 @@ directly comparable and keep headroom for the most significant SNPs.
 from __future__ import annotations
 
 import argparse
-import csv
 import math
 from pathlib import Path
 
@@ -29,29 +28,38 @@ def detect_p_column(columns: list[str]) -> str | None:
     return None
 
 
-def min_positive_pvalue_from_tsv(tsv_path: Path, p_col: str) -> float | None:
+def min_positive_from_file_for_columns(tsv_path: Path, candidate_cols: list[str]) -> float | None:
+    """Scan a TSV once and return the minimum positive p-value across candidate columns."""
     local_min = None
+
     with tsv_path.open("r", encoding="utf-8", newline="") as fh:
-        reader = csv.reader(fh, delimiter="\t")
-        header = next(reader, None)
-        if not header or p_col not in header:
+        header_line = fh.readline()
+        if not header_line:
             return None
-        p_idx = header.index(p_col)
 
-        for row in reader:
-            if p_idx >= len(row):
-                continue
-            cell = row[p_idx].strip()
-            if not cell:
-                continue
-            try:
-                p_val = float(cell)
-            except ValueError:
-                continue
+        header = [h.strip() for h in header_line.rstrip("\n\r").split("\t")]
+        idxs = [header.index(col) for col in candidate_cols if col in header]
+        if not idxs:
+            return None
 
-            if 0 < p_val <= 1:
-                if local_min is None or p_val < local_min:
-                    local_min = p_val
+        for line in fh:
+            if not line.strip():
+                continue
+            parts = line.rstrip("\n\r").split("\t")
+            for idx in idxs:
+                if idx >= len(parts):
+                    continue
+                cell = parts[idx].strip()
+                if not cell:
+                    continue
+                try:
+                    p_val = float(cell)
+                except ValueError:
+                    continue
+
+                if 0 < p_val <= 1:
+                    if local_min is None or p_val < local_min:
+                        local_min = p_val
 
     return local_min
 
@@ -81,19 +89,32 @@ def main() -> None:
     global_min_p = None
 
     for ds in gwastables:
+        ds_name = ds.get("name", "unknown")
         file_path = Path(ds["file"])
         if not file_path.exists():
+            print(f"[WARN] Missing GWAS file for dataset {ds_name}: {file_path}", flush=True)
             continue
 
+        p_cols = []
         for table in ds.get("tables", []):
             table_cols = [str(c) for c in table.get("columns", [])]
             p_col = detect_p_column(table_cols)
-            if p_col is None:
-                continue
+            if p_col:
+                p_cols.append(p_col)
 
-            local_min = min_positive_pvalue_from_tsv(file_path, p_col)
-            if local_min is not None and (global_min_p is None or local_min < global_min_p):
-                global_min_p = local_min
+        # Unique while preserving order
+        seen = set()
+        p_cols = [c for c in p_cols if not (c in seen or seen.add(c))]
+
+        if not p_cols:
+            print(f"[WARN] No p-value columns found for dataset {ds_name}", flush=True)
+            continue
+
+        print(f"[INFO] Scanning {ds_name}: {file_path} with columns {p_cols}", flush=True)
+        local_min = min_positive_from_file_for_columns(file_path, p_cols)
+        if local_min is not None and (global_min_p is None or local_min < global_min_p):
+            global_min_p = local_min
+            print(f"[INFO] Updated global minimum p-value to {global_min_p}", flush=True)
 
     if global_min_p is None:
         # Safe fallback if no valid p-values were found.
@@ -104,9 +125,9 @@ def main() -> None:
     # Keep room above the strongest SNP so peaks are never clipped.
     global_ymax = max(8.0, round(global_max_log10p * 1.2 + 0.5, 2))
 
-    # Fixed thresholds in y-space derived from the global significance range.
-    threshold_low_y = max(1.5, round(global_max_log10p * 0.35, 2))
-    threshold_high_y = max(threshold_low_y + 0.5, round(global_max_log10p * 0.60, 2))
+    # Lower fixed thresholds in y-space, per user request.
+    threshold_low_y = 2.5
+    threshold_high_y = 4.5
 
     # Keep thresholds inside visible y-range with headroom.
     threshold_high_y = min(threshold_high_y, round(global_ymax * 0.90, 2))
@@ -127,7 +148,7 @@ def main() -> None:
         for key, val in rows:
             fh.write(f"{key}\t{val}\n")
 
-    print(f"Wrote global region plot scaling to {out_path}")
+    print(f"Wrote global region plot scaling to {out_path}", flush=True)
 
 
 if __name__ == "__main__":

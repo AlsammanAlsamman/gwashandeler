@@ -13,22 +13,24 @@ REGION_END="$6"
 DATASET="$7"
 TABLE="$8"
 TABLE_COLUMNS="$9"
-SCALING_FILE="${10}"
+SCALING_FILE="${10:-}"
 
 if [[ ! -f "$INPUT_FILE" ]]; then
     echo "Error: Input file not found: $INPUT_FILE" >&2
     exit 1
 fi
 
-if [[ -z "$SCALING_FILE" || ! -f "$SCALING_FILE" ]]; then
-    echo "Error: Global scaling file not found: $SCALING_FILE" >&2
-    exit 1
+if [[ -n "$SCALING_FILE" && ! -f "$SCALING_FILE" ]]; then
+    echo "Warning: Global scaling file not found, continuing without it: $SCALING_FILE" >&2
+    SCALING_FILE=""
 fi
 
 echo "Creating region Manhattan plot for $REGION_NAME ($DATASET - $TABLE)"
 echo "Input: $INPUT_FILE"
 echo "Output PNG: $OUTPUT_PNG"
-echo "Scaling: $SCALING_FILE"
+if [[ -n "$SCALING_FILE" ]]; then
+    echo "Scaling: $SCALING_FILE"
+fi
 
 # Load required modules in the current shell
 module load slurm
@@ -51,17 +53,30 @@ echo "Loading R module: $R_MODULE"
 module load "$R_MODULE" 2>/dev/null || echo "Warning: R module load failed, trying direct path"
 
 # Execute R script
-Rscript scripts/plot_region_manhattan.R \
-    "$INPUT_FILE" \
-    "$OUTPUT_PNG" \
-    "$REGION_NAME" \
-    "$REGION_CHR" \
-    "$REGION_START" \
-    "$REGION_END" \
-    "$DATASET" \
-    "$TABLE" \
-    "$TABLE_COLUMNS" \
-    "$SCALING_FILE"
+if [[ -n "$SCALING_FILE" ]]; then
+    Rscript scripts/plot_region_manhattan.R \
+        "$INPUT_FILE" \
+        "$OUTPUT_PNG" \
+        "$REGION_NAME" \
+        "$REGION_CHR" \
+        "$REGION_START" \
+        "$REGION_END" \
+        "$DATASET" \
+        "$TABLE" \
+        "$TABLE_COLUMNS" \
+        "$SCALING_FILE"
+else
+    Rscript scripts/plot_region_manhattan.R \
+        "$INPUT_FILE" \
+        "$OUTPUT_PNG" \
+        "$REGION_NAME" \
+        "$REGION_CHR" \
+        "$REGION_START" \
+        "$REGION_END" \
+        "$DATASET" \
+        "$TABLE" \
+        "$TABLE_COLUMNS"
+fi
 
 if [[ $? -eq 0 ]]; then
     echo "Region Manhattan plot successfully created."

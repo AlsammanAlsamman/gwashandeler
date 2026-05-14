@@ -61,7 +61,6 @@ def load_regions():
 
 REGIONS = load_regions()
 REGION_BY_ID = {row["region_id"]: row for row in REGIONS}
-GLOBAL_SCALING = f"{results_dir}/plots/regions/_global_scaling.tsv"
 
 
 def get_plot_targets():
@@ -98,29 +97,9 @@ rule all:
         get_plot_targets()
 
 
-rule compute_region_plot_scaling:
-    output:
-        scaling=GLOBAL_SCALING
-    resources:
-        mem_mb=16000,
-        cores=1,
-        time="01:30:00"
-    log:
-        f"{results_dir}/log/compute_region_plot_scaling.log"
-    shell:
-        """
-        mkdir -p $(dirname {output.scaling}) $(dirname {log})
-        python3 scripts/compute_region_plot_scaling.py \
-            --config configs/analysis.yml \
-            --output {output.scaling} \
-            2>&1 | tee {log}
-        """
-
-
 rule plot_region_gwas_manhattan:
     input:
-        gwas_file=lambda wc: get_original_table_path(wc.dataset, wc.table),
-        scaling=GLOBAL_SCALING
+        gwas_file=lambda wc: get_original_table_path(wc.dataset, wc.table)
     output:
         png=f"{results_dir}/plots/regions/{{region_id}}/{{dataset}}__{{table}}.png",
         done=f"{results_dir}/plots/regions/{{region_id}}/{{dataset}}__{{table}}.done"
@@ -149,7 +128,6 @@ rule plot_region_gwas_manhattan:
             {wildcards.dataset} \
             {wildcards.table} \
             "{params.columns}" \
-            {input.scaling} \
             2>&1 | tee {log}
         touch {output.done}
         """

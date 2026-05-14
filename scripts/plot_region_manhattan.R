@@ -90,6 +90,10 @@ if (length(table_columns) > 0) {
     }
 }
 z_col <- if (length(z_cols) > 0) colnames(gwas_data)[z_cols[1]] else NA_character_
+beta_col <- NA_character_
+se_col <- NA_character_
+z_from_beta_se <- FALSE
+z_from_p <- FALSE
 
 # If explicit Z-score is not available, estimate it from beta/se when possible.
 if (is.na(z_col)) {
@@ -98,34 +102,62 @@ if (is.na(z_col)) {
     if (length(beta_cols) > 0 && length(se_cols) > 0) {
         beta_col <- colnames(gwas_data)[beta_cols[1]]
         se_col <- colnames(gwas_data)[se_cols[1]]
-        gwas_data$ZSCORE_EST <- suppressWarnings(as.numeric(gwas_data[[beta_col]]) / as.numeric(gwas_data[[se_col]]))
-        z_col <- "ZSCORE_EST"
+        z_from_beta_se <- TRUE
         cat("Using estimated Z-score from", beta_col, "and", se_col, "\n")
     }
 }
 
 # Last-resort fallback: unsigned z from p-value.
-if (is.na(z_col)) {
-    gwas_data$ZSCORE_EST <- suppressWarnings(qnorm(1 - as.numeric(gwas_data[[p_col]]) / 2))
-    z_col <- "ZSCORE_EST"
+if (is.na(z_col) && !z_from_beta_se) {
+    z_from_p <- TRUE
     cat("Using Z-score estimated from p-value only (unsigned)\n")
 }
 
-cat("Using columns - CHR:", chr_col, "POS:", pos_col, "PVAL:", p_col, "ZSCORE:", z_col, "\n")
+cat("Using columns - CHR:", chr_col, "POS:", pos_col, "PVAL:", p_col)
+if (!is.na(z_col)) {
+    cat(" ZSCORE:", z_col)
+} else if (z_from_beta_se) {
+    cat(" ZSCORE: estimated from", beta_col, "and", se_col)
+} else if (z_from_p) {
+    cat(" ZSCORE: estimated from p-value")
+}
+cat("\n")
 cat("Data sample (first 3 rows of used columns):\n")
-sample_cols <- c(chr_col, pos_col, p_col, z_col)
+sample_cols <- c(chr_col, pos_col, p_col)
+if (!is.na(z_col)) sample_cols <- c(sample_cols, z_col)
+if (z_from_beta_se) sample_cols <- c(sample_cols, beta_col, se_col)
 print(head(gwas_data[, sample_cols], 3))
 
+select_cols <- c(chr_col, pos_col, p_col)
+if (!is.na(z_col)) select_cols <- c(select_cols, z_col)
+if (z_from_beta_se) select_cols <- c(select_cols, beta_col, se_col)
+select_cols <- unique(select_cols)
+
 plot_data <- gwas_data %>%
-    select(all_of(c(chr_col, pos_col, p_col, z_col))) %>%
+    select(all_of(select_cols)) %>%
     mutate(
         CHR = norm_chr(.data[[chr_col]]),
-        POS = suppressWarnings(as.numeric(.data[[pos_col]])),
-        PVAL = suppressWarnings(as.numeric(.data[[p_col]])),
-        ZSCORE = suppressWarnings(as.numeric(.data[[z_col]]))
+        POS = suppressWarnings(as.numeric(.data[[pos_col]]))
     ) %>%
-    filter(!is.na(CHR), !is.na(POS), !is.na(PVAL), !is.na(ZSCORE), PVAL > 0, PVAL <= 1) %>%
     filter(CHR == norm_chr(region_chr), POS >= region_start, POS <= region_end) %>%
+    mutate(PVAL = suppressWarnings(as.numeric(.data[[p_col]])))
+
+if (!is.na(z_col)) {
+    plot_data <- plot_data %>%
+        mutate(ZSCORE = suppressWarnings(as.numeric(.data[[z_col]])))
+} else if (z_from_beta_se) {
+    plot_data <- plot_data %>%
+        mutate(ZSCORE = suppressWarnings(as.numeric(.data[[beta_col]]) / as.numeric(.data[[se_col]])))
+} else if (z_from_p) {
+    plot_data <- plot_data %>%
+        mutate(ZSCORE = suppressWarnings(qnorm(1 - PVAL / 2)))
+} else {
+    plot_data <- plot_data %>%
+        mutate(ZSCORE = NA_real_)
+}
+
+plot_data <- plot_data %>%
+    filter(!is.na(CHR), !is.na(POS), !is.na(PVAL), !is.na(ZSCORE), PVAL > 0, PVAL <= 1) %>%
     arrange(POS) %>%
     mutate(log10p = -log10(PVAL))
 
@@ -160,6 +192,12 @@ if (nrow(plot_data) == 0) {
         theme_void() +
         labs(title = paste0("Region Manhattan: ", region_name, " | ", dataset, " - ", table_name))
 } else {
+    region_width <- max(1, region_end - region_start)
+    x_padding <- region_width * 0.05
+    x_start <- max(0, region_start - x_padding)
+    x_end <- region_end + x_padding
+    y_max <- max(plot_data$log10p, na.rm = TRUE) * 1.10
+
     p <- ggplot(plot_data, aes(x = POS, y = log10p, color = ZSCORE)) +
         geom_point(aes(size = log10p), alpha = 0.7) +
         scale_color_gradient2(
@@ -180,7 +218,7 @@ if (nrow(plot_data) == 0) {
             range = c(0.7, 3.8),
             breaks = seq(0, ceiling(max(plot_data$log10p, na.rm = TRUE)), by = 2)
         ) +
-        coord_cartesian(xlim = c(region_start, region_end), expand = FALSE) +
+        coord_cartesian(xlim = c(x_start, x_end), ylim = c(0, y_max), expand = FALSE) +
         labs(
             title = paste0("Region Manhattan: ", region_name, " | ", dataset, " - ", table_name),
             subtitle = paste0(norm_chr(region_chr), ":", format(region_start, scientific = FALSE, trim = TRUE),

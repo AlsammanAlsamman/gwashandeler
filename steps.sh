@@ -10,5 +10,8 @@
 # Step 3: Subset GWAS by p-value threshold
 ./submit.sh --snakefile rules/03_subset_gwas.smk --jobs 10 --cores 8
 
-# Step 4: Build merged FUMA loci and Excel min-p summary
+# Step 4: Aggregate SNPs and filter reference panels
+./submit.sh --snakefile rules/04_filter_ref_panels.smk --jobs 10 --cores 8
+
+# Step 5: Build merged FUMA loci and Excel min-p summary
 ./submit.sh --snakefile rules/02_fuma_loci_summary.smk --jobs 1 --cores 2

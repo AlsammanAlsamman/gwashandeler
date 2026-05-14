@@ -1,7 +1,9 @@
 import sys
+import glob
+import os
+import re
 sys.path.append("utils")
 from bioconfigme import get_results_dir
-from pathlib import Path
 
 configfile: "configs/analysis.yml"
 
@@ -12,8 +14,23 @@ def get_all_ref_panels():
     return list(config['ref_panels'].keys())
 
 def get_all_chromosomes():
-    """Get list of all possible chromosomes (1-22, X, Y, MT)."""
-    return [str(i) for i in range(1, 23)] + ['X', 'Y', 'MT']
+    """Get chromosomes present in subset outputs; fallback to autosomes if not found."""
+    subset_pattern = f"{results_dir}/gwas_subset/*/*_subset_dir/*_chr*_subset.tsv"
+    files = glob.glob(subset_pattern)
+    chromosomes = set()
+
+    for f in files:
+        m = re.search(r'_chr([^_/]+)_subset\.tsv$', os.path.basename(f))
+        if m:
+            chromosomes.add(m.group(1))
+
+    if not chromosomes:
+        return [str(i) for i in range(1, 23)]
+
+    def chr_sort_key(ch):
+        return (0, int(ch)) if ch.isdigit() else (1, ch)
+
+    return sorted(chromosomes, key=chr_sort_key)
 
 def get_snp_aggregation_targets():
     """Aggregate SNP files per chromosome."""

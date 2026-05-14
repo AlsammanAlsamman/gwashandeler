@@ -1,0 +1,25 @@
+# Software modules and tool configurations
+plink2:
+  module: "plink2/2.00a3.3lm"
+  version: "2.00a3.3lm"
+  params:
+    memory: "--memory 32000"
+    threads: "--threads 2"
+
+r:
+  module: "R/4.4.1-mkl"
+  version: "4.4.1"
+  params:
+    susieR_max_causal: "10"
+    coverage: "0.95"
+
+python:
+  module: "python/3.10.2"
+  version: "3.10.2"
+
+bcftools:
+  module: "bcftools/1.15"
+  version: "1.15"
+  params:
+    output_type: "-O z"
+    threads: "--threads 2"

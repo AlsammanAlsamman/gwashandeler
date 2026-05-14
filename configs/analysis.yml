@@ -1,0 +1,155 @@
+# Analysis configuration and paths
+project_name: "gwas-handler"
+version: "0.1.0"
+results_dir: "/s/nath-lab/alsamman/____MyCodes____/gwashandeler/results"
+
+# Default resources
+default_resources:
+  mem_mb: 64000
+  cores: 2
+  time: "00:30:00"
+
+# Extraction defaults
+extraction:
+  delimiter: "\t"
+
+# GWAS subsetting defaults
+subsetting:
+  pvalue_threshold: 5e-3
+
+ref_panels:
+  EAS: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.EAS
+  EUR: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.EUR
+  AFR: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.AFR
+  AMR: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.AMR
+
+fuma_folder: input/fumas
+# GWAS datasets and extraction table definitions
+gwastables:
+  - name: AFR_AMR
+    file: "input/AFR_AMR.tsv"
+    delimiter: "\t"
+    reference_panel: AFR
+    tables:
+      - table_name: local_ancestry_AFRvsAMR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: AFR_AFRvsAMR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: AMR_AFRvsAMR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: AFR_EAS
+    file: "input/AFR_EAS.tsv"
+    delimiter: "\t"
+    reference_panel: AFR
+    tables:
+      - table_name: local_ancestry_AFRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: AFR_AFRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: EAS_AFRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: AFR_EUR
+    file: "input/AFR_EUR.tsv"
+    delimiter: "\t"
+    reference_panel: AFR
+    tables:
+      - table_name: local_ancestry_AFRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: AFR_AFRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: EUR_AFRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: AMR_EAS
+    file: "input/AMR_EAS.tsv"
+    delimiter: "\t"
+    reference_panel: AMR
+    tables:
+      - table_name: local_ancestry_AMRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: AMR_AMRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: EAS_AMRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: AMR_EUR
+    file: "input/AMR_EUR.tsv"
+    delimiter: "\t"
+    reference_panel: AMR
+    tables:
+      - table_name: local_ancestry_AMRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: AMR_AMRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: EUR_AMRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: EUR_EAS
+    file: "input/EUR_EAS.tsv"
+    delimiter: "\t"
+    reference_panel: EUR
+    tables:
+      - table_name: local_ancestry_EURvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: EUR_EURvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: EAS_EURvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: AFR_gwas
+    file: "input/AFR.gwas.tsv"
+    delimiter: "\t"
+    reference_panel: AFR
+    tables:
+      - table_name: gwas_primary
+        columns: [CHR, POS, ID, P, A1, OR, Z_STAT, ERRCODE]
+
+  - name: AMR_gwas
+    file: "input/AMR.gwas.tsv"
+    delimiter: "\t"
+    reference_panel: AMR
+    tables:
+      - table_name: gwas_primary
+        columns: [CHR, POS, ID, P, A1, OR, Z_STAT, ERRCODE]
+
+  - name: EAS_gwas
+    file: "input/EAS.gwas.tsv"
+    delimiter: "\t"
+    reference_panel: EAS
+    tables:
+      - table_name: gwas_primary
+        columns: [CHR, POS, ID, P, A1, OR, Z_STAT, ERRCODE]
+
+  - name: EUR_gwas
+    file: "input/EUR.gwas.tsv"
+    delimiter: "\t"
+    reference_panel: EUR
+    tables:
+      - table_name: gwas_primary
+        columns: [CHR, POS, ID, P, A1, OR, Z_STAT, ERRCODE]
+
+  - name: BJEUR
+    file: "input/BJEUR.tsv"
+    delimiter: "\t"
+    reference_panel: EUR
+    tables:
+      - table_name: gwas_primary
+        columns: [snpid, rsid, chrom, pos, ea, nea, eaf, beta, se, p, n]
+
+  - name: Hisp
+    file: "input/Hisp.tsv"
+    delimiter: "\t"
+    reference_panel: AMR
+    tables:
+      - table_name: gwas_primary
+        columns: [chrom, pos, rsid, effectallele, otherallele, pvalue, beta, se]
+
+  - name: WangEAS
+    file: "input/WangEAS.tsv"
+    delimiter: "\t"
+    reference_panel: EAS
+    tables:
+      - table_name: gwas_primary
+        columns: [markername, varid, snpid, chrom, pos, ea, nea, eaf, neaf, beta, se, p, n]

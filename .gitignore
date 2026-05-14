@@ -1,0 +1,6 @@
+build/
+.snakemake/
+input/
+logs/
+prompts/
+results/

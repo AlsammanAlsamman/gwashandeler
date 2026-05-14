@@ -13,5 +13,8 @@
 # Step 4: Aggregate SNPs and filter reference panels
 ./submit.sh --snakefile rules/04_filter_ref_panels.smk --jobs 10 --cores 8
 
-# Step 5: Build merged FUMA loci and Excel min-p summary
+# Step 5: Identify loci per chromosome and merge per table
+./submit.sh --snakefile rules/05_identify_loci.smk --jobs 40 --cores 8
+
+# Step 6: Build merged FUMA loci and Excel min-p summary
 ./submit.sh --snakefile rules/02_fuma_loci_summary.smk --jobs 1 --cores 2

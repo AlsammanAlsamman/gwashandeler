@@ -17,6 +17,14 @@ extraction:
 subsetting:
   pvalue_threshold: 5e-3
 
+# Loci identification defaults
+loci_identiffication:
+  lead_p_threshold: 5e-8
+  merge_distance_kb: 250
+  min_snps_per_locus: 1
+  require_refpanel_match: true
+  chromosomes: autosomes
+
 ref_panels:
   EAS: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.EAS
   EUR: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.EUR

@@ -14,10 +14,13 @@ extraction:
   delimiter: "\t"
 
 regions: input/regions.tsv
+target_snps: input/target_SNPs.txt
 
 # GWAS subsetting defaults
 subsetting:
   pvalue_threshold: 5e-3
+
+
 
 # Loci identification defaults
 loci_identiffication:
@@ -36,6 +39,14 @@ loci_identiffication:
 
 gene_annotation:
   gencode_gtf: /s/nath-lab/alsamman/____MyCodes____/resources/NCBI37.3.gene.loc
+
+# Step 8: Loci classification across datasets
+classification:
+  merge_gap_bp: 250000
+  gws_threshold: 5e-8
+  gwas_files:
+    primary: ["Hisp", "WangEAS", "BJEUR"]
+    ancestral: ["AFR_AMR", "AFR_EAS", "AFR_EUR", "AMR_EAS", "AMR_EUR", "EUR_EAS"]
 
 ref_panels:
   EAS: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.EAS

@@ -4,7 +4,7 @@
 
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 9) {
-    stop("Usage: Rscript plot_region_manhattan.R <input_file> <output_png> <region_name> <region_chr> <region_start> <region_end> <dataset> <table_name> <columns_csv>")
+    stop("Usage: Rscript plot_region_manhattan.R <input_file> <output_png> <region_name> <region_chr> <region_start> <region_end> <dataset> <table_name> <columns_csv> [scaling_tsv]")
 }
 
 input_file <- args[1]
@@ -16,10 +16,27 @@ region_end <- as.numeric(args[6])
 dataset <- args[7]
 table_name <- args[8]
 columns_csv <- if (length(args) >= 9) args[9] else ""
+scaling_tsv <- if (length(args) >= 10) args[10] else ""
 
 # Plot tuning requested by user
-threshold_suggestive <- 5e-4
-threshold_genomewide <- 5e-6
+threshold_suggestive <- 5e-5
+threshold_genomewide <- 5e-8
+global_ymax <- NA_real_
+
+if (nzchar(scaling_tsv) && file.exists(scaling_tsv)) {
+    scaling <- tryCatch(
+        data.table::fread(scaling_tsv, sep = "\t", data.table = FALSE),
+        error = function(e) NULL
+    )
+    if (!is.null(scaling) && all(c("key", "value") %in% colnames(scaling))) {
+        val <- scaling$value[scaling$key == "global_ymax"][1]
+        parsed <- suppressWarnings(as.numeric(val))
+        if (!is.na(parsed) && is.finite(parsed) && parsed > 0) {
+            global_ymax <- parsed
+            cat("Using global y-axis max from scaling file:", global_ymax, "\n")
+        }
+    }
+}
 
 table_columns <- unique(trimws(unlist(strsplit(columns_csv, ",", fixed = TRUE))))
 
@@ -196,7 +213,7 @@ if (nrow(plot_data) == 0) {
     x_padding <- region_width * 0.05
     x_start <- max(0, region_start - x_padding)
     x_end <- region_end + x_padding
-    y_max <- max(plot_data$log10p, na.rm = TRUE) * 1.10
+    y_max <- if (!is.na(global_ymax)) global_ymax else max(plot_data$log10p, na.rm = TRUE) * 1.10
 
     p <- ggplot(plot_data, aes(x = POS, y = log10p, color = ZSCORE)) +
         geom_point(aes(size = log10p), alpha = 0.7) +

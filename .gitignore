@@ -3,6 +3,7 @@ build/
 input/
 logs/
 prompts/
-results/
+results*/
 OtherCodes/
 *.pyc
+results_OLDResults/

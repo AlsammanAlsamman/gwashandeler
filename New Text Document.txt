@@ -1,0 +1,3 @@
+this rule "# Step 6: Merge all tables into one loci table per dataset
+./submit.sh --snakefile rules/06_merge_dataset_loci.smk --jobs 10 --cores 4
+" creates a table of merged loci for each dataset table, some datasetes have several tables and others have one , what I want is align and merge then extract the best pvalue and rsid for these tables using this rules but it seems the rule missing some 

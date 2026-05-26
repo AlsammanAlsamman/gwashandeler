@@ -23,15 +23,15 @@ rule all:
 
 rule extract_gwas_table:
     input:
-        gwas_file=lambda wc: _get_gwas_file(wc.dataset),
-        target_snps=lambda wc: config.get("target_snps", "")
+        gwas_file=lambda wc: _get_gwas_file(wc.dataset)
     output:
         table=f"{results_dir}/extracted/{{dataset}}/{{table}}.tsv",
         done=f"{results_dir}/extracted/{{dataset}}/{{table}}.done"
     params:
         dataset="{dataset}",
         table="{table}",
-        columns=lambda wc: _get_table_columns(wc.dataset, wc.table)
+        columns=lambda wc: _get_table_columns(wc.dataset, wc.table),
+        target_snps=config.get("target_snps", "")
     resources:
         mem_mb=32000,
         cores=2,
@@ -47,7 +47,7 @@ rule extract_gwas_table:
             --columns {params.columns} \
             --dataset {params.dataset} \
             --table {params.table} \
-            --target-snps {input.target_snps} \
+            --target-snps '{params.target_snps}' \
             2>&1 | tee {log}
         touch {output.done}
         """

@@ -1,0 +1,166 @@
+# Analysis configuration and paths
+project_name: "gwas-handler"
+version: "0.1.0"
+results_dir: "/s/nath-lab/alsamman/____MyCodes____/gwashandeler/results"
+
+# Default resources
+default_resources:
+  mem_mb: 64000
+  cores: 2
+  time: "00:30:00"
+
+# Extraction defaults
+extraction:
+  delimiter: "\t"
+
+regions: ""
+target_snps: ""
+
+# GWAS subsetting defaults
+subsetting:
+  pvalue_threshold: 5e-3
+
+
+
+# Loci identification defaults
+loci_identiffication:
+  lead_p_threshold: 5e-8
+  merge_distance_kb: 250
+  use_ld: true
+  auto_merge_gap_kb: 100
+  ld_test_gap_min_kb: 150
+  ld_test_gap_max_kb: 250
+  min_snps_per_locus: 1
+  require_refpanel_match: true
+  chromosomes: autosomes
+  min_locus_width_kbp: 1
+  ld_threshold: 0.2
+  n_boundary_snps: 10
+
+gene_annotation:
+  gencode_gtf: /s/nath-lab/alsamman/____MyCodes____/resources/NCBI37.3.gene.loc
+
+# Step 8: Loci classification across datasets
+classification:
+  merge_gap_bp: 250000
+  gws_threshold: 5e-8
+  gwas_files:
+    primary: ["Hisp", "WangEAS", "BJEUR"]
+    ancestral: ["AFR_AMR", "AFR_EAS", "AFR_EUR", "AMR_EAS", "AMR_EUR", "AMR_Non_AMR", "EUR_EAS"]
+
+ref_panels:
+  EAS: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.EAS
+  EUR: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.EUR
+  AFR: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.AFR
+  AMR: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.AMR
+
+fuma_folder: results_OLDResults/fumas
+# GWAS datasets and extraction table definitions
+gwastables:
+  - name: AFR_AMR
+    file: "input/AFR_AMR.tsv"
+    delimiter: "\t"
+    reference_panel: AFR
+    tables:
+      - table_name: local_ancestry_AFRvsAMR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: AFR_AFRvsAMR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: AMR_AFRvsAMR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: AFR_EAS
+    file: "input/AFR_EAS.tsv"
+    delimiter: "\t"
+    reference_panel: AFR
+    tables:
+      - table_name: local_ancestry_AFRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: AFR_AFRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: EAS_AFRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: AFR_EUR
+    file: "input/AFR_EUR.tsv"
+    delimiter: "\t"
+    reference_panel: AFR
+    tables:
+      - table_name: local_ancestry_AFRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: AFR_AFRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: EUR_AFRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: AMR_EAS
+    file: "input/AMR_EAS.tsv"
+    delimiter: "\t"
+    reference_panel: AMR
+    tables:
+      - table_name: local_ancestry_AMRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: AMR_AMRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: EAS_AMRvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: AMR_EUR
+    file: "input/AMR_EUR.tsv"
+    delimiter: "\t"
+    reference_panel: AMR
+    tables:
+      - table_name: local_ancestry_AMRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: AMR_AMRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: EUR_AMRvsEUR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: AMR_Non_AMR
+    file: "input/AMR_Non_AMR.tsv"
+    delimiter: "\t"
+    reference_panel: AMR
+    tables:
+      - table_name: local_ancestry_AMRvsNonAMR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: AMR_AMRvsNonAMR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: NonAMR_AMRvsNonAMR
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: EUR_EAS
+    file: "input/EUR_EAS.tsv"
+    delimiter: "\t"
+    reference_panel: EUR
+    tables:
+      - table_name: local_ancestry_EURvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
+      - table_name: EUR_EURvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
+      - table_name: EAS_EURvsEAS
+        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+
+  - name: BJEUR
+    file: "input/BJEUR.tsv"
+    delimiter: "\t"
+    reference_panel: EUR
+    tables:
+      - table_name: gwas_primary
+        columns: [snpid, chrom, pos, ea, nea, eaf, beta, se, p, n, rsid]
+
+  - name: Hisp
+    file: "input/Hisp.tsv"
+    delimiter: "\t"
+    reference_panel: AMR
+    tables:
+      - table_name: gwas_primary
+        columns: [chrom, pos, rsid, otherallele, effectallele, pvalue, beta, se]
+
+  - name: WangEAS
+    file: "input/WangEAS.tsv"
+    delimiter: "\t"
+    reference_panel: EAS
+    tables:
+      - table_name: gwas_primary
+        columns: [markername, varid, snpid, chrom, pos, ea, nea, eaf, neaf, beta, se, p, n]

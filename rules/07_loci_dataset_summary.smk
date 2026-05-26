@@ -48,10 +48,16 @@ def get_chr_details_tsv_targets():
     return [f"{results_dir}/loci_summary/by_chr/chr{c}.details.tsv" for c in get_chromosomes()]
 
 
+def get_chr_best_hits_tsv_targets():
+    return [f"{results_dir}/loci_summary/by_chr/chr{c}.dataset_best_hits.tsv" for c in get_chromosomes()]
+
+
 rule all:
     input:
         f"{results_dir}/loci_summary/dataset_loci_gene_summary.tsv",
         f"{results_dir}/loci_summary/dataset_loci_gene_summary.xlsx",
+        f"{results_dir}/loci_summary/dataset_loci_dataset_best_hits.tsv",
+        f"{results_dir}/loci_summary/dataset_loci_dataset_best_hits.xlsx",
         f"{results_dir}/loci_summary/dataset_loci_gene_summary.details.tsv",
         f"{results_dir}/loci_summary/dataset_loci_gene_summary.done"
 
@@ -63,6 +69,7 @@ rule summarize_dataset_loci_with_genes_by_chr:
     output:
         tsv=f"{results_dir}/loci_summary/by_chr/chr{{chromosome}}.summary.tsv",
         details=f"{results_dir}/loci_summary/by_chr/chr{{chromosome}}.details.tsv",
+        best_hits=f"{results_dir}/loci_summary/by_chr/chr{{chromosome}}.dataset_best_hits.tsv",
         done=f"{results_dir}/loci_summary/by_chr/chr{{chromosome}}.done"
     params:
         config="configs/analysis.yml",
@@ -94,6 +101,12 @@ rule summarize_dataset_loci_with_genes_by_chr:
             --skip-xlsx \
             $LD_FLAG \
             2>&1 | tee {log}
+        python3 scripts/summarize_dataset_locus_best_hits.py \
+            --config {params.config} \
+            --summary-tsv {output.tsv} \
+            --output-tsv {output.best_hits} \
+            --skip-xlsx \
+            2>&1 | tee -a {log}
         touch {output.done}
         """
 
@@ -102,10 +115,13 @@ rule summarize_dataset_loci_with_genes:
     input:
         chr_tsv=get_chr_summary_tsv_targets(),
         chr_details=get_chr_details_tsv_targets(),
+        chr_best_hits=get_chr_best_hits_tsv_targets(),
         chr_done=get_chr_summary_done_targets()
     output:
         tsv=f"{results_dir}/loci_summary/dataset_loci_gene_summary.tsv",
         xlsx=f"{results_dir}/loci_summary/dataset_loci_gene_summary.xlsx",
+        best_hits_tsv=f"{results_dir}/loci_summary/dataset_loci_dataset_best_hits.tsv",
+        best_hits_xlsx=f"{results_dir}/loci_summary/dataset_loci_dataset_best_hits.xlsx",
         details=f"{results_dir}/loci_summary/dataset_loci_gene_summary.details.tsv",
         done=f"{results_dir}/loci_summary/dataset_loci_gene_summary.done"
     resources:
@@ -125,6 +141,11 @@ rule summarize_dataset_loci_with_genes:
         python3 scripts/combine_loci_details_by_chr.py \
             --inputs {input.chr_details} \
             --output-tsv {output.details} \
+            2>&1 | tee -a {log}
+        python3 scripts/combine_dataset_best_hits_by_chr.py \
+            --inputs {input.chr_best_hits} \
+            --output-tsv {output.best_hits_tsv} \
+            --output-xlsx {output.best_hits_xlsx} \
             2>&1 | tee -a {log}
         touch {output.done}
         """

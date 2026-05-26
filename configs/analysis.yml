@@ -13,8 +13,8 @@ default_resources:
 extraction:
   delimiter: "\t"
 
-regions: input/regions.tsv
-target_snps: input/target_SNPs.txt
+regions: ""
+target_snps: ""
 
 # GWAS subsetting defaults
 subsetting:
@@ -45,142 +45,43 @@ classification:
   merge_gap_bp: 250000
   gws_threshold: 5e-8
   gwas_files:
-    primary: ["Hisp", "WangEAS", "BJEUR"]
-    ancestral: ["AFR_AMR", "AFR_EAS", "AFR_EUR", "AMR_EAS", "AMR_EUR", "EUR_EAS"]
+    primary: ["Asian", "Asian_imp", "Disc", "Disc_imp"]
+    ancestral: []
 
 ref_panels:
   EAS: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.EAS
-  EUR: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.EUR
-  AFR: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.AFR
-  AMR: /s/nath-lab/alsamman/____MyCodes____/resources/plink_by_superpop/1kg_phase3_hg19.AMR
 
-fuma_folder: input/fumas
+fuma_folder: results_OLDResults/fumas
 # GWAS datasets and extraction table definitions
 gwastables:
-  - name: AFR_AMR
-    file: "input/AFR_AMR.tsv"
-    delimiter: "\t"
-    reference_panel: AFR
-    tables:
-      - table_name: local_ancestry_AFRvsAMR
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
-      - table_name: AFR_AFRvsAMR
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
-      - table_name: AMR_AFRvsAMR
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
+  # - name: Asian
+  #   file: "input/Asian.tsv"
+  #   delimiter: "\t"
+  #   reference_panel: EAS
+  #   tables:
+  #     - table_name: gwas_primary
+  #       columns: [chrom, pos, ea, nea, beta, se, p, direction, het_isq, het_chisq, het_df, het_pval, varid]
 
-  - name: AFR_EAS
-    file: "input/AFR_EAS.tsv"
-    delimiter: "\t"
-    reference_panel: AFR
-    tables:
-      - table_name: local_ancestry_AFRvsEAS
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
-      - table_name: AFR_AFRvsEAS
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
-      - table_name: EAS_AFRvsEAS
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
-
-  - name: AFR_EUR
-    file: "input/AFR_EUR.tsv"
-    delimiter: "\t"
-    reference_panel: AFR
-    tables:
-      - table_name: local_ancestry_AFRvsEUR
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
-      - table_name: AFR_AFRvsEUR
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
-      - table_name: EUR_AFRvsEUR
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
-
-  - name: AMR_EAS
-    file: "input/AMR_EAS.tsv"
-    delimiter: "\t"
-    reference_panel: AMR
-    tables:
-      - table_name: local_ancestry_AMRvsEAS
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
-      - table_name: AMR_AMRvsEAS
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
-      - table_name: EAS_AMRvsEAS
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
-
-  - name: AMR_EUR
-    file: "input/AMR_EUR.tsv"
-    delimiter: "\t"
-    reference_panel: AMR
-    tables:
-      - table_name: local_ancestry_AMRvsEUR
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
-      - table_name: AMR_AMRvsEUR
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
-      - table_name: EUR_AMRvsEUR
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
-
-  - name: EUR_EAS
-    file: "input/EUR_EAS.tsv"
-    delimiter: "\t"
-    reference_panel: EUR
-    tables:
-      - table_name: local_ancestry_EURvsEAS
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_local_ancestry, se_local_ancestry, p_local_ancestry, ancestry_i, ancestry_j]
-      - table_name: EUR_EURvsEAS
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_i, se_dosage_i, p_dosage_i, ancestry_i]
-      - table_name: EAS_EURvsEAS
-        columns: [CHROM, POS, ID, REF, ALT, n, beta_dosage_j, se_dosage_j, p_dosage_j, ancestry_j]
-
-  - name: AFR_gwas
-    file: "input/AFR.gwas.tsv"
-    delimiter: "\t"
-    reference_panel: AFR
-    tables:
-      - table_name: gwas_primary
-        columns: [CHR, POS, ID, P, A1, OR, Z_STAT, ERRCODE]
-
-  - name: AMR_gwas
-    file: "input/AMR.gwas.tsv"
-    delimiter: "\t"
-    reference_panel: AMR
-    tables:
-      - table_name: gwas_primary
-        columns: [CHR, POS, ID, P, A1, OR, Z_STAT, ERRCODE]
-
-  - name: EAS_gwas
-    file: "input/EAS.gwas.tsv"
+  - name: Asian_imp
+    file: "input/Asian_imp.txt"
     delimiter: "\t"
     reference_panel: EAS
     tables:
       - table_name: gwas_primary
-        columns: [CHR, POS, ID, P, A1, OR, Z_STAT, ERRCODE]
+        columns: [CHR, SNP, BP, A_EFFECT, A_ALT, TYPE, Z, R2.BLUP, NEFF, P, KG_REF, KG_ALT, EAS_AF, beta_imp, se_imp, OR, L95, U95]
 
-  - name: EUR_gwas
-    file: "input/EUR.gwas.tsv"
-    delimiter: "\t"
-    reference_panel: EUR
-    tables:
-      - table_name: gwas_primary
-        columns: [CHR, POS, ID, P, A1, OR, Z_STAT, ERRCODE]
+  # - name: Disc
+  #   file: "input/Disc.tsv"
+  #   delimiter: "\t"
+  #   reference_panel: EAS
+  #   tables:
+  #     - table_name: gwas_primary
+  #       columns: [chrom, pos, snpid, ea, nea, beta, se, p, direction, het_isq, het_chisq, het_df, het_pval, markername]
 
-  - name: BJEUR
-    file: "input/BJEUR.tsv"
-    delimiter: "\t"
-    reference_panel: EUR
-    tables:
-      - table_name: gwas_primary
-        columns: [snpid, rsid, chrom, pos, ea, nea, eaf, beta, se, p, n]
-
-  - name: Hisp
-    file: "input/Hisp.tsv"
-    delimiter: "\t"
-    reference_panel: AMR
-    tables:
-      - table_name: gwas_primary
-        columns: [chrom, pos, rsid, effectallele, otherallele, pvalue, beta, se]
-
-  - name: WangEAS
-    file: "input/WangEAS.tsv"
+  - name: Disc_imp
+    file: "input/Disc_imp.txt"
     delimiter: "\t"
     reference_panel: EAS
     tables:
       - table_name: gwas_primary
-        columns: [markername, varid, snpid, chrom, pos, ea, nea, eaf, neaf, beta, se, p, n]
+        columns: [CHR, SNP, BP, A_EFFECT, A_ALT, TYPE, Z, R2.BLUP, NEFF, P, MAF, beta_imp, se_imp, OR, L95, U95]
